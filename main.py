@@ -1,29 +1,30 @@
+import structlog
 from fastapi import FastAPI
-import logging
-import uvicorn
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('app.log'),  # To file
-        logging.StreamHandler()  # To terminal
+# Configure structlog
+structlog.configure(
+    processors=[ # Chain of functions that transform your log entries
+        structlog.processors.add_log_level,  # Add log level to each log
+        structlog.processors.TimeStamper(fmt="iso"),  # Add timestamp
+        structlog.processors.JSONRenderer()  # Output as JSON
     ]
 )
 
-logger = logging.getLogger(__name__)
+# Create a logger
+logger = structlog.get_logger()
 
+# Create FastAPI app
 app = FastAPI()
 
-@app.get("/divide")
-def divide(a: int, b: int):
-    try:
-        result = a / b
-        return {"result": result}
-    except Exception as e:
-        logger.error("Division failed", exc_info=True) # trace stack을 볼 수 있음
-        # logger.exception("Division failed")          
-        return {"error": "Something went wrong"}
+@app.get("/")
+async def root():
+    logger.info("root_endpoint_called")
+    return {"message": "Hello World"}
+
+@app.get("/users/{user_id}")
+async def get_user(user_id: int):
+    logger.info("user_endpoint_called", user_id=user_id) # event name, key-value pairs
+    return {"user_id": user_id, "name": "John Doe"}
 
 # Run the server when script is executed
 if __name__ == "__main__":
