@@ -1,18 +1,17 @@
 import logging
-
-# Create two handlers
-console_handler = logging.StreamHandler()
-file_handler = logging.FileHandler('app.log')
-
+import database
+import auth
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s",
-    handlers=[console_handler, file_handler]
- )
+    format="%(name)s %(asctime)s - %(levelname)s - %(message)s",
+)
 
-logging.debug("debug") # level 1
-logging.info("info")
-logging.warning("warning") # default
-logging.error("error")
-logging.critical("critical") # level 5
+logger = logging.getLogger(__name__) # child logger를 생성 (logger의 이름이 모듈 경로)
+
+logger.info("Application started")
+database.connect()
+database.query_users()
+auth.login("alice")
+auth.logout("alice")
+logger.info("Application finished")
