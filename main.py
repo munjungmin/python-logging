@@ -1,5 +1,5 @@
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 import uuid
 
 # Configure structlog
@@ -16,6 +16,33 @@ logger = structlog.get_logger(__name__)
 # Create FastAPI app
 app = FastAPI()
 
+
+# THE MIDDLEWARE
+@app.middleware("http")
+async def logging_middleware(request: Request, call_next):
+    # Clear old context
+    structlog.contextvars.clear_contextvars()
+    
+    # Generate request ID
+    request_id = str(uuid.uuid4())
+    
+    # Bind context that applies to ALL requests
+    structlog.contextvars.bind_contextvars(
+        request_id=request_id,
+        method=request.method,
+        path=request.url.path
+    )
+    
+    logger.info("request_started")
+    
+    # Process the request
+    response = await call_next(request)
+    
+    logger.info("request_completed", status_code=response.status_code)
+    
+    return response
+
+
 def validate_user():
     logger.info("validating_user")  # Notice: no user_id needed!
     return True
@@ -27,11 +54,7 @@ def fetch_from_db():
 @app.get("/users/{user_id}")
 async def get_user(user_id: int):
 
-    request_id = str(uuid.uuid4())
-
-    # Bind context to contextvars - affects ALL loggers in this requests
-    structlog.contextvars.clear_contextvars() # Clear any previous context
-    structlog.contextvars.bind_contextvars(user_id=user_id, request_id=request_id) # logger 인스턴스 관계 없이 현재 요청 컨텍스트에 붙음
+    structlog.contextvars.bind_contextvars(user_id=user_id)
 
     logger.info("request_received")
     validate_user()
